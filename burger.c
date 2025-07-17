@@ -96,21 +96,33 @@ void *cashier_thread(void *arg) {
 void *customer_thread(void *arg) {
     thread_arg_t *data = (thread_arg_t *)arg;
     int id = data->id;
-    printf("Customer %d entered\n", id);
-    sem_post(data->init_done);
-    sleep(rand() % WAIT_TIME + 1);  // Simulate arrival time
 
+    // Announce customer creation
+    printf("Customer %d entered\n", id);
+
+    // Notify main that this thread is ready
+    sem_post(data->init_done);
+
+
+    // Lock to ensure only one customer proceeds at a time
     sem_wait(&customer_mutex);
+
+    // Signal that a customer is ready to be served
     sem_post(&customer_sem);
+
+    // Wait until a cashier is ready and has shared their data
     sem_wait(&cashier_wake);
 
+    // Get assigned cashier's shared data (order and response semaphores)
     cashier_t c = shared_cashier_data;
+
+    // Release lock for other customers
     sem_post(&customer_mutex);
 
+    // Inform which cashier this customer is interacting with
     printf("Customer %d ordering from Cashier %d\n", id, c.id);
 
-    sem_post(c.order);              // Place order
-    sem_wait(c.food_ready);         // Wait for food
+
     printf("Customer %d received food from Cashier %d\n", id, c.id);
 
     return NULL;
